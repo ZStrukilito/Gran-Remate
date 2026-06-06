@@ -1,0 +1,6 @@
+{
+  "name": "El Gran Remate",
+  "description": "Un juego de subastas muy sencillo diseñado para personas mayores, con controles grandes, voz de asistencia, precios reales argentinos y reglas de suerte intuitivas.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}

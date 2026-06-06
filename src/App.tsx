@@ -383,23 +383,20 @@ export default function App() {
   };
 
   // Player Places Bid
-  const handlePlayerBid = () => {
+  const handlePlayerBid = (increment: number) => {
     if (!roomState) return;
     
     playClickSound();
 
     let nextBidAmount = roomState.currentBid;
     if (roomState.highestBidder === null) {
-      nextBidAmount = roomState.currentItem.startingBid;
+      if (increment === 0) {
+        nextBidAmount = roomState.currentItem.startingBid;
+      } else {
+        nextBidAmount = roomState.currentItem.startingBid + increment;
+      }
     } else {
-      nextBidAmount = roomState.currentBid + 1000; // Simpler steps (+1000 ARS)
-    }
-
-    const myDetails = roomState.players[myPlayerId];
-    if (myDetails && nextBidAmount > myDetails.budget) {
-      speak("¡Atención! No tenés pesos suficientes virtuales.");
-      setApiError("No te alcanza el presupuesto para esta ronda.");
-      return;
+      nextBidAmount = roomState.currentBid + increment;
     }
 
     if (wsRef.current && wsRef.current.readyState === WebSocket.OPEN) {
@@ -566,7 +563,7 @@ export default function App() {
                 setShowCreateDropdown(!showCreateDropdown);
                 setApiError('');
               }}
-              className="p-1.5 px-3 rounded-xl text-xs font-black flex items-center gap-2 cursor-pointer transition-all active:scale-95 bg-zinc-850 hover:bg-zinc-800 text-amber-300"
+              className="p-1.5 px-3 rounded-xl text-xs font-black flex items-center gap-2 cursor-pointer transition-all active:scale-95 bg-zinc-800 hover:bg-zinc-700 text-amber-300"
               title="Crear Subasta"
             >
               <Menu className="w-4 h-4 text-amber-400" />
@@ -739,7 +736,7 @@ export default function App() {
                               value={manualItemName}
                               onChange={(e) => setManualItemName(e.target.value)}
                               placeholder="Ej: Termo de Acero Estilo Stanley"
-                              className="w-full text-base font-bold p-2.5 rounded-xl border-2 border-stone-300 text-stone-900 bg-white focus:outline-none focus:border-amber-850"
+                              className="w-full text-base font-bold p-2.5 rounded-xl border-2 border-stone-300 text-stone-900 bg-white focus:outline-none focus:border-amber-800"
                               required
                             />
                           </div>
@@ -752,7 +749,7 @@ export default function App() {
                                 value={manualRealPrice}
                                 onChange={(e) => setManualRealPrice(e.target.value.replace(/\D/g, ''))}
                                 placeholder="Ej: 25000"
-                                className="w-full text-base font-mono font-bold p-2.5 rounded-xl border-2 border-stone-300 text-stone-900 bg-white focus:outline-none focus:border-amber-850"
+                                className="w-full text-base font-mono font-bold p-2.5 rounded-xl border-2 border-stone-300 text-stone-900 bg-white focus:outline-none focus:border-amber-800"
                                 required
                               />
                             </div>
@@ -763,7 +760,7 @@ export default function App() {
                                 value={manualStartingBid}
                                 onChange={(e) => setManualStartingBid(e.target.value.replace(/\D/g, ''))}
                                 placeholder="Ej: 10000"
-                                className="w-full text-base font-mono font-bold p-2.5 rounded-xl border-2 border-stone-300 text-stone-900 bg-white focus:outline-none focus:border-amber-850"
+                                className="w-full text-base font-mono font-bold p-2.5 rounded-xl border-2 border-stone-300 text-stone-900 bg-white focus:outline-none focus:border-amber-800"
                                 required
                               />
                             </div>
@@ -903,15 +900,29 @@ export default function App() {
                     <h3 className="text-xl font-black text-stone-900 mt-1 leading-tight text-center">{roomState.currentItem.name}</h3>
 
                     {/* BIG MONETARY OFFERS DISPLAY */}
-                    <div className="w-full max-w-xs mt-3 p-3 bg-white border border-stone-200 rounded-2xl text-center shadow-xs" id="bidding-value">
-                      <span className="text-xs font-extrabold text-stone-500 block uppercase mb-1">OFERTA MAYOR EN VIVO</span>
-                      <span className="text-3xl font-black font-mono text-emerald-800 leading-none">${roomState.currentBid.toLocaleString('es-AR')}</span>
+                    <div className="w-full max-w-sm mt-4 p-4 bg-white border border-stone-200 rounded-2xl text-center shadow-md relative overflow-hidden" id="bidding-value">
+                      <div className="absolute top-0 inset-x-0 h-1 bg-amber-600"></div>
+                      <span className="text-[10px] font-black tracking-widest text-amber-800 block uppercase mb-1">ÚLTIMA OFERTA REGISTRADA</span>
+                      <span className="text-4xl font-extrabold font-mono text-emerald-800 leading-none">${roomState.currentBid.toLocaleString('es-AR')}</span>
                       
-                      <div className="mt-1 pb-1 border-t border-stone-100 pt-1 flex justify-center items-center gap-1 text-xs" id="highest-bidder">
-                        <span className="text-lg">{roomState.highestBidder ? roomState.highestBidder.avatar : '👴'}</span>
-                        <span className="font-extrabold text-stone-700">
-                          {roomState.highestBidder ? (roomState.highestBidder.id === myPlayerId ? '¡VAS GANANDO VOS! ⭐' : roomState.highestBidder.name) : 'Aún sin ofertas (¿Quién rompe el hielo?)'}
-                        </span>
+                      <div className="mt-3 pt-3 border-t border-stone-100 flex flex-col items-center justify-center gap-1.5" id="highest-bidder">
+                        <span className="text-[10px] font-bold text-stone-500 uppercase tracking-widest">OFERTA GANADORA EN ESTE INSTANTE</span>
+                        <div className={`flex items-center gap-2 px-4 py-2 rounded-xl text-xs font-black shadow-xs transition-transform ${
+                          roomState.highestBidder 
+                            ? roomState.highestBidder.id === myPlayerId
+                              ? "bg-emerald-50 text-emerald-800 border-2 border-emerald-300 animate-pulse scale-105"
+                              : "bg-amber-50 text-amber-950 border-2 border-amber-300"
+                            : "bg-stone-50 text-stone-500 border border-stone-200"
+                        }`}>
+                          <span className="text-lg">{roomState.highestBidder ? roomState.highestBidder.avatar : '👵'}</span>
+                          <span className="tracking-tight uppercase">
+                            {roomState.highestBidder 
+                              ? roomState.highestBidder.id === myPlayerId 
+                                ? "✨ ¡VAS GANANDO VOS! ⭐" 
+                                : `🏆 ${roomState.highestBidder.name}`
+                              : "Nadie ofertó todavía (¿Quién rompe el hielo?)"}
+                          </span>
+                        </div>
                       </div>
                     </div>
                   </div>
@@ -919,7 +930,7 @@ export default function App() {
                   {/* ROOM CHRONO TICK GAVEL DISPLAY */}
                   {roomState.countdownPhase > 0 && (
                     <div className="p-3 bg-orange-50 border border-orange-200 rounded-2xl text-center animate-pulse shrink-0" id="gavel-ticks-bar">
-                      <span className="text-[10px] text-orange-850 font-black tracking-widest block uppercase leading-none mb-1">¡EL MARTILLO ESTÁ EN EL AIRE!</span>
+                      <span className="text-[10px] text-orange-800 font-black tracking-widest block uppercase leading-none mb-1">¡EL MARTILLO ESTÁ EN EL AIRE!</span>
                       <div className="flex justify-center gap-2 text-xs font-bold">
                         <span className={`px-2.5 py-1 rounded-xl ${roomState.countdownPhase >= 1 ? 'bg-orange-700 text-white' : 'bg-stone-200 text-stone-500'}`}>A la una</span>
                         <span className={`px-2.5 py-1 rounded-xl ${roomState.countdownPhase >= 2 ? 'bg-orange-700 text-white' : 'bg-stone-200 text-stone-500'}`}>A las dos</span>
@@ -973,42 +984,86 @@ export default function App() {
                       </p>
                     </div>
                   ) : (
-                    // CASE B: USER IS PLAYER (GIANT BID BUTTON)
-                    <div className="space-y-3" id="player-bid-panel">
+                    // CASE B: USER IS PLAYER (MULTIPLE BID BUTTONS)
+                    <div className="space-y-3.5" id="player-bid-panel">
                       {apiError && (
                         <div className="bg-red-50 text-red-800 p-2 text-xs rounded-xl font-bold border border-red-200">
                           ⚠️ {apiError}
                         </div>
                       )}
-                      {roomState.highestBidder && roomState.highestBidder.id === myPlayerId ? (
-                        <div className="py-4 bg-emerald-50 text-emerald-800 rounded-3xl border-2 border-emerald-300 text-center uppercase tracking-wider font-extrabold" id="winning-badge-feedback">
-                          <span className="text-4xl block mb-1">⭐</span>
-                          <span className="text-lg font-black">¡Sos el mayor postor hoy!</span>
-                          <p className="text-xs text-emerald-700 font-semibold normal-case mt-0.5">Esperá a ver si alguna persona sube la oferta.</p>
-                        </div>
-                      ) : (
-                        <button
-                          id="btn-giant-player-bid"
-                          onClick={handlePlayerBid}
-                          className={`w-full ${getTextSizeClass('button')} ${theme.buttonAction} py-5 flex flex-col items-center h-auto cursor-pointer`}
-                        >
-                          <span className="text-[10px] tracking-widest uppercase opacity-90 mb-1 font-black">¡QUEDATE CON EL OBJETO!</span>
-                          <span className="text-2xl font-black">
-                            {roomState.highestBidder === null ? `OFERTAR BASE: $${roomState.currentItem.startingBid.toLocaleString('es-AR')}` : 'OFERTAR: +$1.000'}
-                          </span>
-                          <span className="text-xs opacity-90 font-medium mt-1">
-                            {roomState.highestBidder === null 
-                              ? `Inicia la subasta oficial en pesos` 
-                              : `Hacer oferta por $${(roomState.currentBid + 1000).toLocaleString('es-AR')} Pesos`
-                            }
-                          </span>
-                        </button>
-                      )}
 
-                      {/* Display players list during bidiing so you see who you play against */}
-                      <div className="bg-white/60 p-2 border rounded-xl text-xs flex justify-between items-center" id="budget-bar">
-                        <span>Mi Monedero de la Suerte:</span>
-                        <strong className="text-sm font-black text-amber-950 font-mono">${(roomState.players[myPlayerId]?.budget || 350000).toLocaleString('es-AR')} ARS</strong>
+                      {/* Bid Status Indicator Card */}
+                      <div className="text-center bg-stone-100 p-2.5 rounded-xl border border-stone-200/50">
+                        {roomState.highestBidder && roomState.highestBidder.id === myPlayerId ? (
+                          <div className="flex items-center justify-center gap-1.5 text-emerald-800 font-extrabold text-xs uppercase">
+                            <span className="text-sm animate-pulse">⭐</span>
+                            <span>¡Vas ganando vos la oferta!</span>
+                          </div>
+                        ) : (
+                          <div className="text-stone-700 font-bold text-xs uppercase tracking-wide">
+                            {roomState.highestBidder === null 
+                              ? "¡Nadie ofertó todavía! Empezá la subasta:" 
+                              : "¡Subí la oferta para ganar el objeto!"}
+                          </div>
+                        )}
+                      </div>
+
+                      {/* BUTTON GRID */}
+                      <div className="space-y-2">
+                        {roomState.highestBidder === null && (
+                          <button
+                            id="btn-bid-base"
+                            onClick={() => handlePlayerBid(0)}
+                            className="w-full py-4 bg-emerald-700 hover:bg-emerald-800 text-white font-black rounded-xl flex flex-col items-center justify-center transition-all active:scale-[0.98] shadow-md cursor-pointer"
+                          >
+                            <span className="text-[9px] tracking-wider uppercase opacity-80">Iniciar oferta</span>
+                            <span className="text-base">OFERTAR BASE: ${roomState.currentItem.startingBid.toLocaleString('es-AR')}</span>
+                          </button>
+                        )}
+
+                        <div className="grid grid-cols-2 gap-2">
+                          <button
+                            id="btn-bid-500"
+                            onClick={() => handlePlayerBid(500)}
+                            className="py-3 bg-amber-600 hover:bg-amber-700 text-white font-black rounded-xl flex flex-col items-center justify-center transition-all active:scale-95 shadow-sm cursor-pointer"
+                          >
+                            <span className="text-base font-mono font-black">+$500</span>
+                            <span className="text-[10px] font-medium opacity-90">Siguiente: ${(roomState.highestBidder === null ? roomState.currentItem.startingBid + 500 : roomState.currentBid + 500).toLocaleString('es-AR')}</span>
+                          </button>
+
+                          <button
+                            id="btn-bid-1000"
+                            onClick={() => handlePlayerBid(1000)}
+                            className="py-3 bg-amber-700 hover:bg-amber-800 text-white font-black rounded-xl flex flex-col items-center justify-center transition-all active:scale-95 shadow-sm cursor-pointer"
+                          >
+                            <span className="text-base font-mono font-black">+$1.000</span>
+                            <span className="text-[10px] font-medium opacity-90">Siguiente: ${(roomState.highestBidder === null ? roomState.currentItem.startingBid + 1000 : roomState.currentBid + 1000).toLocaleString('es-AR')}</span>
+                          </button>
+
+                          <button
+                            id="btn-bid-2000"
+                            onClick={() => handlePlayerBid(2000)}
+                            className="py-3 bg-amber-800 hover:bg-amber-900 text-white font-black rounded-xl flex flex-col items-center justify-center transition-all active:scale-95 shadow-sm cursor-pointer"
+                          >
+                            <span className="text-base font-mono font-black">+$2.000</span>
+                            <span className="text-[10px] font-medium opacity-90">Siguiente: ${(roomState.highestBidder === null ? roomState.currentItem.startingBid + 2000 : roomState.currentBid + 2000).toLocaleString('es-AR')}</span>
+                          </button>
+
+                          <button
+                            id="btn-bid-5000"
+                            onClick={() => handlePlayerBid(5000)}
+                            className="py-3 bg-stone-800 hover:bg-stone-900 text-white font-black rounded-xl flex flex-col items-center justify-center transition-all active:scale-95 shadow-sm cursor-pointer"
+                          >
+                            <span className="text-base font-mono font-black">+$5.000</span>
+                            <span className="text-[10px] font-medium opacity-90">Siguiente: ${(roomState.highestBidder === null ? roomState.currentItem.startingBid + 5000 : roomState.currentBid + 5000).toLocaleString('es-AR')}</span>
+                          </button>
+                        </div>
+                      </div>
+
+                      {/* Display total amount spent/bid by the player */}
+                      <div className="bg-emerald-50 p-3 border-2 border-emerald-500/20 rounded-xl text-xs flex justify-between items-center" id="budget-bar">
+                        <span className="font-extrabold text-stone-700">Monto total apostado mío:</span>
+                        <strong className="text-sm font-black text-emerald-800 font-mono">${(roomState.players[myPlayerId]?.totalSpent || 0).toLocaleString('es-AR')} ARS</strong>
                       </div>
                     </div>
                   )}
@@ -1099,9 +1154,9 @@ export default function App() {
 
                   {/* MINI WALLET FOR INDIVIDUAL PLAYERS ONLY */}
                   {role === 'postor' && (
-                    <div className="bg-white/90 p-3 border rounded-xl flex justify-between items-center text-xs" id="post-round-wallet">
-                      <span className="font-bold">Tu presupuesto restante:</span>
-                      <strong className="font-mono text-sm text-stone-850">${(roomState.players[myPlayerId]?.budget || 350000).toLocaleString('es-AR')} ARS</strong>
+                    <div className="bg-emerald-50/95 p-3 border-2 border-emerald-500/10 rounded-xl flex justify-between items-center text-xs" id="post-round-wallet">
+                      <span className="font-bold text-stone-700 font-sans">Monto total apostado mío:</span>
+                      <strong className="font-mono text-sm text-emerald-800 font-extrabold">${(roomState.players[myPlayerId]?.totalSpent || 0).toLocaleString('es-AR')} ARS</strong>
                     </div>
                   )}
 

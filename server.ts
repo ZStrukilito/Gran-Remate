@@ -36,6 +36,7 @@ interface PlayerState {
   id: string;
   name: string;
   budget: number;
+  totalSpent?: number;
   connected: boolean;
 }
 
@@ -286,7 +287,8 @@ wss.on("connection", (ws: WebSocket) => {
             room.players[playerId] = {
               id: playerId,
               name: cleanName,
-              budget: room.players[playerId]?.budget || 350000,
+              budget: 999999999999, // Infinite virtual budget
+              totalSpent: room.players[playerId]?.totalSpent || 0,
               connected: true
             };
             room.playerSockets[playerId] = ws;
@@ -324,18 +326,21 @@ wss.on("connection", (ws: WebSocket) => {
           const { amount } = data;
           
           // Bid validations
-          if (amount <= room.currentBid) {
-            ws.send(JSON.stringify({ type: "error", message: "La oferta debe ser mayor a la actual." }));
-            return;
+          const isFirstBid = room.highestBidder === null;
+          if (isFirstBid) {
+            if (amount < room.currentBid) {
+              ws.send(JSON.stringify({ type: "error", message: `La oferta inicial debe ser de al menos $${room.currentBid.toLocaleString('es-AR')} ARS.` }));
+              return;
+            }
+          } else {
+            if (amount <= room.currentBid) {
+              ws.send(JSON.stringify({ type: "error", message: "La oferta debe ser mayor a la actual." }));
+              return;
+            }
           }
 
           const player = room.players[joinedPlayerId];
           if (!player) return;
-
-          if (amount > player.budget) {
-            ws.send(JSON.stringify({ type: "error", message: "No tenés presupuesto suficiente para esa oferta." }));
-            return;
-          }
 
           // Update current stats
           room.currentBid = amount;
@@ -377,8 +382,8 @@ wss.on("connection", (ws: WebSocket) => {
               const winnerId = room.highestBidder.id;
               const winner = room.players[winnerId];
               if (winner) {
-                // Deduct budget
-                winner.budget = Math.max(0, winner.budget - room.currentBid);
+                // Accumulate spent totals instead of deducting precious budget
+                winner.totalSpent = (winner.totalSpent || 0) + room.currentBid;
               }
               room.auctionMessage = `🔨 ¡VENDIDO! Su objeto "${room.currentItem?.name}" se vendió a ${room.highestBidder.name} por $${room.currentBid.toLocaleString('es-AR')} pesos. ¡Felicitaciones!`;
             } else {
